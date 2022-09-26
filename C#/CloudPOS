@@ -1,0 +1,59 @@
+ 
+ //Service Class
+ public bool InsertCustomerEditLog(string username, string password, Customer customer, string UpdateBy)
+        {
+            connectionFactory = ConnectionHelper.GetConnection(username, password);
+
+            using (var context = new DbContext(connectionFactory))
+            {
+                var rep = new CustomerRepository(context);
+
+                return rep.InsertCustomerEditLog(customer,UpdateBy);
+            }
+        }
+        
+        
+//Repository Class
+
+        public string UpdateCustomer(Customer customer)
+        {
+            IList<System.Data.IDbCommand> commands = new List<System.Data.IDbCommand>();
+            var command = _context.CreateCommand();
+
+            StringBuilder sb = new StringBuilder();
+
+            #region Update Customer List
+
+
+
+            command = _context.CreateCommand();
+            sb = new StringBuilder();
+
+            sb.Append(" UPDATE ECCUSTOMER SET  CUSTOMER_FIRST_NAME ='" + customer.CUSTOMER_FIRST_NAME + "' "
+
+                + " , CUSTOMER_ADDRESS='" + customer.CUSTOMER_ADDRESS + "', CUSTOMER_CITY='" + customer.CUSTOMER_CITY + "', CUSTOMER_POSTAL_CODE ='" + customer.CUSTOMER_POSTAL_CODE + "'"
+                + " , CUTOMER_COUNTRY='" + customer.CUTOMER_COUNTRY + "', CUSTOMER_PHONE ='" + customer.CUSTOMER_PHONE + "', CUSTOMER_EMAIL='" + customer.CUSTOMER_EMAIL + "'"
+                + " , CUSTOMER_DOE='" + customer.CUSTOMER_DOE + "',CUSTOMER_TYPE='" + customer.CUSTOMER_TYPE + "',CUSTOMER_DISC_PRCNT='" + customer.CUSTOMER_DISC_PRCNT + "',UPDATED_DATE = GETDATE() "
+                + " WHERE  CUSTOMER_ID ='" + customer.CUSTOMER_ID + "'");
+
+
+
+
+
+            command.CommandText = sb.ToString();
+            commands.Add(command);
+
+
+
+            #endregion
+
+            var transaction = _context.CreateCommand().Connection.BeginTransaction(System.Data.IsolationLevel.ReadCommitted);
+            if (this.ExecuteNonQuery(commands, transaction))
+            {
+                return customer.CUSTOMER_ID;
+            }
+            else
+            {
+                return string.Empty;
+            }
+        }
