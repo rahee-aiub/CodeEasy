@@ -1,1 +1,47 @@
+//Crystal report in API
 
+ using (CrystalDecisions.CrystalReports.Engine.ReportDocument rd = new ReportDocument())
+                            {
+                                rd.Load(System.Web.Hosting.HostingEnvironment.MapPath("~/") + "\\Reports\\rptInvoice.rpt");
+                                rd.SetDataSource(items);
+
+                                string ffName = System.Web.HttpContext.Current.Server.MapPath("~/CReports") + "/" + guid.ToString() + ".pdf";
+                                CrystalDecisions.Shared.DiskFileDestinationOptions dfo = new CrystalDecisions.Shared.DiskFileDestinationOptions();
+                                dfo.DiskFileName = ffName;
+                                rd.ExportOptions.ExportFormatType = CrystalDecisions.Shared.ExportFormatType.PortableDocFormat;
+                                rd.ExportOptions.DestinationOptions = dfo;
+                                rd.ExportOptions.ExportDestinationType = CrystalDecisions.Shared.ExportDestinationType.DiskFile;
+
+                                rd.Export();
+                                rd.Close();
+                            }
+
+                    string filename = "/CReports/" + guid.ToString() + ".pdf";
+                    
+              
+              
+              
+//Desktop application
+               ReportDocument rprt = new ReportDocument();
+
+                var x = (List<CheckinListDTO>)_CheckinManager.GetIndividualCheckinReport(bookingNo, ref msg);
+
+                rprt.Load(Application.StartupPath + "\\Reports\\rptGuestCheckin.rpt");
+
+                rprt.SetDataSource(x);
+
+
+                var CompanyInfo = _CompanySetupManager.GetAll(ref msg);
+
+                rprt.SetParameterValue("@CompanyName", CompanyInfo[0].COM_NAME);
+                rprt.SetParameterValue("@CompanyAddress", CompanyInfo[0].ADDRESS);
+                rprt.SetParameterValue("@VatRegNo", CompanyInfo[0].VAT_REG_NO);
+                rprt.SetParameterValue("@TinNo", CompanyInfo[0].TIN_NO);
+                rprt.SetParameterValue("@Telephone", CompanyInfo[0].TELEPHONE);
+                rprt.SetParameterValue("@Email", CompanyInfo[0].EMAIL);
+                rprt.SetParameterValue("@Web", CompanyInfo[0].WEB);
+
+                ReportViewer rv = new ReportViewer();
+
+                rv.crystalReportViewer1.ReportSource = rprt;
+                rv.Show();
