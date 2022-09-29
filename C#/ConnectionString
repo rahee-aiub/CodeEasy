@@ -1,0 +1,8 @@
+ <add name="DB_CONN" connectionString="Data Source=.;Initial Catalog=ShopUniqlo; Connect Timeout=0; Integrated Security=true" providerName="System.Data.SqlClient" />
+ <add name="DB_CONN_2" providerName="System.Data.SqlClient" connectionString="Data Source=.;Initial Catalog=GrameenUNIQLO;Integrated Security=true;Connect Timeout=0;" />
+
+
+
+<add name="DB_CONN" connectionString="Data Source=192.168.1.243\sql17;Initial Catalog=ShopUniqlo; Integrated Security=false;Connect Timeout=0; user id=sa;password=data;" providerName="System.Data.SqlClient" />
+<add name="DB_CONN_2" providerName="System.Data.SqlClient" connectionString="Data Source=203.82.195.201;Initial Catalog=GrameenUNIQLO;Integrated Security=false;Connect Timeout=0; user id=sa;password=Msdsl2019;" />
+
