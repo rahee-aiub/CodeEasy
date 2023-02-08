@@ -1,0 +1,580 @@
+  public void ExportProductToMagentoAsync(string siteAddress, string token, string sku, ref StatusObserver statusObserver)
+        {
+            string barcode = "";
+            try
+            {
+                objMagneto = new MagentoProvider(siteAddress, token);
+
+                MProductAttributeSet productAttribute = null;
+                MAttributeSet attributeSet = null;
+
+                MCategory categoryList = null;
+                MCategory category = null;
+                MCategory subcategory = null;
+                MCategory subsubcategory = null;
+                MProduct pProduct;
+                MProduct product;
+
+                statusObserver.Message = $"Gettings Categories from magento for sync ";
+                categoryList = objMagneto.GetCategories();
+
+                statusObserver.Message = $"Gettings Attributes from magento for sync ";
+                productAttribute = objMagneto.GetAttributeSets();
+
+
+                //IList<MConfigurableProductOptionDTO> options = new List<MConfigurableProductOptionDTO>();
+
+                IList<ConfigurableProductOptionDTO> options = new List<ConfigurableProductOptionDTO>();
+
+                IList<UniqloProduct> ChildproductList = null;
+
+                IList<UniqloProduct> parentProductList = UniqloProductController.GetParentProductList();
+
+                IList<MLinkProduct> linkProudcut = null;
+
+                CatalogInventoryDataStockItem stock = new CatalogInventoryDataStockItem();
+
+
+                // For Single Parent Product Testing
+                if (!string.IsNullOrEmpty(sku))
+                    parentProductList = parentProductList.Where(p => p.ItemID == sku).ToList();
+
+                int parentCount = parentProductList.Count;
+                int currentParrent = 1;
+
+
+
+                statusObserver.Message = $"Total Parent Product Loaded {parentCount} ";
+
+
+                foreach (UniqloProduct p in parentProductList)
+                {
+
+                    //barcode = pp.BarCode;
+
+                    options = new List<ConfigurableProductOptionDTO>();
+                    linkProudcut = new List<MLinkProduct>();
+                    statusObserver.Message = $"Matching and creation Product Category, Subcategory, Sub Sub category ";
+
+                    #region Product Category, Subcategory, Subcategory
+
+
+                    if (categoryList != null)
+                    {
+                        if (categoryList.ChildrenData != null)
+                        {
+                            category = (from k in categoryList.ChildrenData
+                                        where k.Name.Equals(p.gDeptName)
+                                        select k).FirstOrDefault();
+                            if (category != null)
+                            {
+                                if (category.ChildrenData != null)
+                                {
+                                    subcategory = (from k in category.ChildrenData
+                                                   where k.Name.Equals(p.DeptName)
+                                                   select k).FirstOrDefault();
+                                    if (subcategory != null)
+                                    {
+                                        if (subcategory.ChildrenData != null)
+                                        {
+                                            subsubcategory = (from k in subcategory.ChildrenData
+                                                              where k.Name.Equals(p.CatName)
+                                                              select k).FirstOrDefault();
+                                            if (subsubcategory == null)
+                                            {
+                                                subsubcategory = objMagneto.CreateCategory(0, 4, subcategory.Id, p.CatName, true, true);
+                                                if (subsubcategory != null)
+                                                {
+
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            subsubcategory = objMagneto.CreateCategory(0, 4, subcategory.Id, p.CatName, true, true);
+                                            if (subsubcategory != null)
+                                            {
+
+                                            }
+                                        }
+
+                                    }
+                                    else
+                                    {
+                                        subcategory = objMagneto.CreateCategory(0, 3, category.Id, p.DeptName, true, true);
+                                        if (subcategory != null)
+                                        {
+                                            subsubcategory = objMagneto.CreateCategory(0, 4, subcategory.Id, p.CatName, true, true);
+                                            if (subsubcategory != null)
+                                            {
+
+                                            }
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    subcategory = objMagneto.CreateCategory(0, 2, category.Id, p.DeptName, true, true);
+                                    if (subcategory != null)
+                                    {
+                                        subsubcategory = objMagneto.CreateCategory(0, 4, subcategory.Id, p.CatName, true, true);
+                                        if (subsubcategory != null)
+                                        {
+
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                category = objMagneto.CreateCategory(0, 2, categoryList.Id, p.gDeptName, true, true);
+
+                                if (category != null)
+                                {
+                                    subcategory = objMagneto.CreateCategory(0, 3, category.Id, p.DeptName, true, true);
+
+                                    if (subcategory != null)
+                                    {
+                                        subsubcategory = objMagneto.CreateCategory(0, 4, subcategory.Id, p.CatName, true, true);
+                                        if (subsubcategory != null)
+                                        {
+
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    #endregion
+
+                    #region Product Attribute Set
+
+
+                    if (productAttribute != null)
+                    {
+                        if (productAttribute.Items != null)
+                        {
+                            attributeSet = productAttribute.Items.FirstOrDefault();
+                        }
+                    }
+
+                    #endregion
+
+                    MProductDTO prdDTO = new MProductDTO();
+
+                    #region Full Product
+
+
+                    ChildproductList = UniqloProductController.GetProductList(p.ItemID);
+
+
+                    CatalogDataProduct cProduct = new CatalogDataProduct();
+
+                    if (ChildproductList.Count == 0)
+                    {
+                        continue;
+                    }
+                    #region Child Product
+                    int childCounter = 0;
+                    IList<ProductAttribute> pAttributeAllProducts = ProductController.GetListByParentCode("7777", p.ItemID);
+                    if (ChildproductList.Count > 0)
+                    {
+
+                        foreach (UniqloProduct ppp in ChildproductList)
+                        {
+                            childCounter++;
+                            statusObserver.Message = $"Sending Parent {currentParrent} of {parentCount} with child {childCounter} of {ChildproductList.Count} ";
+
+                            //MProduct existProduct = objMagneto.GetProductBySKU(ppp.Skusl.ToString());
+                            barcode = ppp.BarCode;
+
+
+
+                            prdDTO = new MProductDTO();
+                            cProduct = new CatalogDataProduct();
+                            cProduct.attributeSetId = attributeSet.AttributeSetId;
+                            cProduct.customAttributes = new List<FrameworkAttribute>();
+                            cProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = "description", value = p.ItemName });
+
+                            string name = "";
+
+
+                            IList<ProductAttribute> pAttribute = pAttributeAllProducts.Where(k => k.Barcode == ppp.BarCode).ToList();
+                            p.ProductAttributeList = pAttribute;
+                            if (p.ProductAttributeList != null)
+                            {
+                                foreach (ProductAttribute pa in p.ProductAttributeList)
+                                {
+                                    if (pa.EC_TYPE == "CHECKBOX")
+                                    {
+                                        objMagneto.AddAttributeOption(pa.VARIANCE_NAME.Replace(" ", "_").ToLower(), pa.ATTRIBUTE_NAME.ToUpper());
+                                        string optionId = GetOptionId(pa.VARIANCE_NAME.Replace(" ", "_").ToLower(), pa.ATTRIBUTE_NAME.ToUpper());
+
+                                        FrameworkAttribute b = new FrameworkAttribute();
+                                        b.attributeCode = pa.VARIANCE_NAME.ToLower();
+                                        b.value = optionId;
+                                        cProduct.customAttributes.Add(b);
+                                    }
+
+                                    else if (pa.EC_TYPE == "TEXTBOX")
+                                    {
+                                        cProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = pa.VARIANCE_NAME.Replace(" ", "_").ToLower(), value = pa.ATTRIBUTE_NAME.ToUpper() });
+                                    }
+                                    name = name + " - " + pa.ATTRIBUTE_NAME.ToUpper();
+                                }
+                            }
+
+                            cProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = "url_key", value = p.BarCode + "-" + name.Replace(" ", "-") });
+
+                            cProduct.name = p.ItemName;
+                            cProduct.sku = ppp.Skusl.ToString();
+                            cProduct.status = 1;
+                            cProduct.typeId = "simple";
+                            cProduct.visibility = 1;
+                            cProduct.weight = 0;
+                            cProduct.price = ppp.RPU;
+
+
+                            stock = new CatalogInventoryDataStockItem();
+                            stock.isInStock = true;
+                            stock.isQtyDecimal = true;
+                            stock.manageStock = true;
+                            stock.notifyStockQty = 0;
+                            stock.qty = 0;
+                            stock.qtyIncrements = 0;
+                            stock.stockId = 1;
+                            stock.enableQtyIncrements = true;
+
+                            cProduct.extension_attributes = new CatalogDataProductExtension();
+                            cProduct.extension_attributes.stockItem = stock;
+
+                            prdDTO.product = cProduct;
+
+
+                            // Child Product Entry
+                            product = objMagneto.CreateProduct(prdDTO);
+
+                            statusObserver.Message = $"Linging Categories,Sub Categories of Child Product {currentParrent} of {parentCount}  ";
+
+                            if (product != null)
+                            {
+                                if (category != null)
+                                    objMagneto.LinkProductWithCategory(category.Id.ToString(), 1, product.sku);
+                                if (subcategory != null)
+                                    objMagneto.LinkProductWithCategory(subcategory.Id.ToString(), 1, product.sku);
+                                if (subsubcategory != null)
+                                    objMagneto.LinkProductWithCategory(subsubcategory.Id.ToString(), 1, product.sku);
+
+                                MLinkProduct l = new MLinkProduct();
+                                l.childSku = product.sku;
+
+                                linkProudcut.Add(l);
+                            }
+
+                        }
+
+
+
+
+                    }
+                    #endregion
+
+
+
+                    // Have to Code Here for configurable Product 
+
+
+                    statusObserver.Message = $"Sending Parent {currentParrent} of {parentCount}  ";
+
+                    #region configurable Product
+                    if (ChildproductList.Count > 0)
+                    {
+                        // For Parent Product Name SKU Take one from childList because all are same 
+                        // Creating Parent product for upper childs
+
+                        UniqloProduct Up = ChildproductList.FirstOrDefault();
+
+
+                       //IList<ProductAttribute> pAttribute = ProductController.GetListByParentCode("7777", Up.ItemID);
+                        IList<ProductAttribute> pAttribute = pAttributeAllProducts;
+                        if (pAttribute != null)
+                        {
+
+                            #region size
+
+                            configurable_product_options sizeAtt = new configurable_product_options();
+
+                            var psize = (from d in pAttribute
+                                         where d.VARIANCE_NAME.ToUpper().Equals("SIZE")
+                                         select d).ToList();
+
+                            CatelogAttributeDTO dtoSize = objMagneto.GetAttributeByCode("size");
+
+                            if (dtoSize != null)
+                            {
+                                if (dtoSize.items != null)
+                                {
+                                    CatelogAttribute att = (from k in dtoSize.items
+                                                            where k.attribute_code.ToUpper().Equals("SIZE")
+                                                            select k).FirstOrDefault();
+                                    if (att != null)
+                                    {
+                                        sizeAtt.attributeId = att.attribute_id.ToString();
+                                        sizeAtt.id = 0;
+                                        sizeAtt.isUseDefault = false;
+                                        sizeAtt.label = "size";
+                                        sizeAtt.position = 0;
+                                        sizeAtt.productId = 0;
+                                        sizeAtt.values = new List<configurable_product_options_Value>();
+
+                                        foreach (var x in psize)
+                                        {
+                                            string sizeName = x.ATTRIBUTE_NAME.ToUpper();
+
+                                            var data = (from k in att.options
+                                                        where k.label.ToUpper().Equals(sizeName)
+                                                        select k).FirstOrDefault();
+
+                                            if (data != null)
+                                            {
+                                                configurable_product_options_Value v = new configurable_product_options_Value();
+                                                v.value_index = Convert.ToInt64(data.value);
+
+                                                sizeAtt.values.Add(v);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            #endregion
+                            #region age
+
+                            //configurable_product_options ageAtt = new configurable_product_options();
+
+                            //var page = (from d in pAttribute
+                            //            where d.VARIANCE_NAME.ToUpper().Equals("AGE")
+                            //            select d).ToList();
+
+                            //CatelogAttributeDTO dtoAge = objMagneto.GetAttributeByCode("age");
+
+                            //if (dtoAge != null)
+                            //{
+                            //    if (dtoAge.items != null)
+                            //    {
+                            //        CatelogAttribute att = (from p in dtoAge.items
+                            //                                where p.attribute_code.ToUpper().Equals("AGE")
+                            //                                select p).FirstOrDefault();
+                            //        if (att != null)
+                            //        {
+                            //            ageAtt.attributeId = att.attribute_id.ToString();
+                            //            ageAtt.id = 0;
+                            //            ageAtt.isUseDefault = false;
+                            //            ageAtt.label = "age";
+                            //            ageAtt.position = 0;
+                            //            ageAtt.productId = 0;
+                            //            ageAtt.values = new List<configurable_product_options_Value>();
+
+                            //            if (page != null)
+                            //            {
+                            //                foreach (var x in page)
+                            //                {
+                            //                    string ageName = x.ATTRIBUTE_NAME.ToUpper();
+
+                            //                    var data = (from p in att.options
+                            //                                where p.label.ToUpper().Equals(ageName)
+                            //                                select p).FirstOrDefault();
+
+                            //                    if (data != null)
+                            //                    {
+                            //                        configurable_product_options_Value v = new configurable_product_options_Value();
+                            //                        v.valueIndex = Convert.ToInt64(data.value);
+                            //                        ageAtt.values.Add(v);
+                            //                    }
+                            //                }
+                            //            }
+
+                            //        }
+                            //    }
+                            //}
+
+                            #endregion
+                            #region Color
+
+                            configurable_product_options colorAtt = new configurable_product_options();
+
+                            var pColor = (from d in pAttribute
+                                          where d.VARIANCE_NAME.ToUpper().Equals("COLOR")
+                                          select d).ToList();
+
+                            CatelogAttributeDTO dtoColor = objMagneto.GetAttributeByCode("color");
+
+                            if (dtoColor != null)
+                            {
+                                if (dtoColor.items != null)
+                                {
+                                    CatelogAttribute att = (from k in dtoColor.items
+                                                            where k.attribute_code.ToUpper().Equals("COLOR")
+                                                            select k).FirstOrDefault();
+                                    if (att != null)
+                                    {
+                                        colorAtt.attributeId = att.attribute_id.ToString();
+                                        colorAtt.id = 0;
+                                        colorAtt.isUseDefault = false;
+                                        colorAtt.label = "color";
+                                        colorAtt.position = 0;
+                                        colorAtt.productId = 0;
+                                        colorAtt.values = new List<configurable_product_options_Value>();
+
+                                        foreach (var x in pColor)
+                                        {
+                                            string colorName = x.ATTRIBUTE_NAME.ToUpper();
+
+                                            var data = (from k in att.options
+                                                        where k.label.ToUpper().Equals(colorName)
+                                                        select k).FirstOrDefault();
+
+                                            if (data != null)
+                                            {
+                                                configurable_product_options_Value v = new configurable_product_options_Value();
+                                                v.value_index = Convert.ToInt64(data.value);
+                                                // v.extensionAttributes = data.label;
+                                                colorAtt.values.Add(v);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            #endregion
+
+                            string type = "configurable";
+
+
+                            #region Parent Product
+
+                            prdDTO = new MProductDTO();
+
+                            CatalogDataProduct cPProduct = new CatalogDataProduct();
+                            cPProduct.attributeSetId = attributeSet.AttributeSetId;
+                            cPProduct.customAttributes = new List<FrameworkAttribute>();
+                            cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = "description", value = Up.ItemName });
+                            cPProduct.id = 0;
+                            cPProduct.name = Up.ItemName;
+                            cPProduct.price = Up.RPU;
+                            cPProduct.sku = Up.ItemID;
+                            cPProduct.status = 1;
+                            cPProduct.typeId = type;
+                            cPProduct.visibility = 4;
+                            cPProduct.weight = 0;
+                            cPProduct.extension_attributes = new CatalogDataProductExtension();
+
+                            cPProduct.extension_attributes.configurable_product_options = new List<configurable_product_options>();
+                            if (psize.Count > 0)
+                            {
+                                cPProduct.extension_attributes.configurable_product_options.Add(sizeAtt);
+                            }
+                            if (pColor.Count > 0)
+                            {
+                                cPProduct.extension_attributes.configurable_product_options.Add(colorAtt);
+                            }
+                            //if (page.Count > 0)
+                            //{
+                            //    cPProduct.extension_attributes.configurable_product_options.Add(ageAtt);
+                            //}
+                            if (pAttribute != null)
+                            {
+                                foreach (ProductAttribute pa in pAttribute)
+                                {
+                                    //if (pa.EC_TYPE == "TEXTBOX")
+                                    //{
+                                    //    cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = pa.VARIANCE_NAME.Replace(" ", "_").ToLower(), value = pa.ATTRIBUTE_NAME.ToUpper() });
+                                    //}
+                                    //if (pa.VARIANCE_NAME.ToLower() == "Season")
+                                    //{
+                                    //    cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = pa.VARIANCE_NAME.Replace(" ", "_").ToLower(), value = pa.ATTRIBUTE_NAME.ToUpper() });
+                                    //}
+                                    // For new Version This is off
+                                    //if (pa.VARIANCE_NAME.ToLower() == "color")
+                                    //{
+                                    //    cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = pa.VARIANCE_NAME.Replace(" ", "_").ToLower(), value = pa.ATTRIBUTE_NAME.ToUpper() });
+                                    //}
+                                    //if (pa.VARIANCE_NAME.ToLower() == "size")
+                                    //{
+                                    //    cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = pa.VARIANCE_NAME.Replace(" ", "_").ToLower(), value = pa.ATTRIBUTE_NAME.ToUpper() });
+                                    //}
+                                }
+                            }
+
+                            stock = new CatalogInventoryDataStockItem();
+                            stock.isInStock = true;
+                            stock.isQtyDecimal = true;
+                            stock.manageStock = true;
+                            stock.notifyStockQty = 3;
+                            stock.qty = 0;
+                            stock.qtyIncrements = 0;
+                            stock.stockId = 1;
+                            stock.enableQtyIncrements = true;
+
+                            cPProduct.extension_attributes.stockItem = stock;
+
+                            cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = "url_key", value = Up.BarCode + "-" + Up.ItemName.Replace(" ", "-") });
+                            if (Up.VATPrcnt == Convert.ToDecimal(0))
+                            {
+                                cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = "tax_class_id", value = 0.ToString() });
+                            }
+                            if (Up.VATPrcnt == Convert.ToDecimal(5.000000))
+                            {
+                                cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = "tax_class_id", value = 4.ToString() });
+                            }
+                            if (Up.VATPrcnt == Convert.ToDecimal(7.500000))
+                            {
+                                cPProduct.customAttributes.Add(new FrameworkAttribute() { attributeCode = "tax_class_id", value = 2.ToString() });
+                            }
+
+                            prdDTO.product = cPProduct;
+
+                            //Parent Product Entry
+                            pProduct = objMagneto.CreateProduct(prdDTO);
+
+                            statusObserver.Message = $"Linging Categories,Sub Categories of Parent {currentParrent} of {parentCount}  ";
+
+
+                            if (pProduct != null)
+                            {
+                                if (category != null)
+                                    objMagneto.LinkProductWithCategory(category.Id.ToString(), 0, pProduct.sku);
+                                if (subcategory != null)
+                                    objMagneto.LinkProductWithCategory(subcategory.Id.ToString(), 1, pProduct.sku);
+                                if (subsubcategory != null)
+                                    objMagneto.LinkProductWithCategory(subsubcategory.Id.ToString(), 2, pProduct.sku);
+
+                                if (psize.Count != 0 || pColor.Count != 0)
+                                {
+                                    foreach (MLinkProduct d in linkProudcut)
+                                    {
+                                        objMagneto.LinkSimpleProductsConfigurableProduct(d, pProduct.sku);
+                                    }
+                                }
+
+                                ProductController.UpdateECSyncStatus(CompanyCode, Up.sBarCode, "1");
+                            }
+                        }
+
+                    }
+
+                    #endregion
+                }
+                // }
+
+                #endregion
+
+                currentParrent++;
+                #endregion
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Exception Barcode: " + barcode + " - " + ex.Message);
+
+            }
+        }
